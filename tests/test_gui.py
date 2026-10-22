@@ -44,8 +44,10 @@ INFO = core.MediaInfo(60.0, True, 640, 360, "h264", 30.0)
 
 
 def _window(keep: bool):
-    with mock.patch.object(core, "ensure_ffmpeg", return_value=("ffmpeg", "ffprobe")), \
-            mock.patch.object(core, "probe", return_value=INFO):
+    with (
+        mock.patch.object(core, "ensure_ffmpeg", return_value=("ffmpeg", "ffprobe")),
+        mock.patch.object(core, "probe", return_value=INFO),
+    ):
         w = gui.MainWindow()
         if keep:
             w.action_box.setCurrentIndex(1)
@@ -94,10 +96,17 @@ def test_initial_state(win):
     assert "30 fps" in win.meta_label.text()
 
 
-@pytest.mark.parametrize("typed,normalized", [
-    ("90", "00:01:30.000"), ("1:30", "00:01:30.000"), ("0:1:30", "00:01:30.000"),
-    ("45.5", "00:00:45.500"), ("1:05.25", "00:01:05.250"), ("00:00:01,5", "00:00:01.500"),
-])
+@pytest.mark.parametrize(
+    "typed,normalized",
+    [
+        ("90", "00:01:30.000"),
+        ("1:30", "00:01:30.000"),
+        ("0:1:30", "00:01:30.000"),
+        ("45.5", "00:00:45.500"),
+        ("1:05.25", "00:01:05.250"),
+        ("00:00:01,5", "00:00:01.500"),
+    ],
+)
 def test_flexible_time_input_is_normalized(win, typed, normalized):
     win.table.item(0, 1).setText(typed)
     assert _text(win, 0, 1) == normalized
@@ -105,7 +114,10 @@ def test_flexible_time_input_is_normalized(win, typed, normalized):
 
 def test_live_length_and_total(win):
     _fill(win, ("10", "25"), ("30", "1:00"))
-    assert _text(win, 0, gui.COL_LEN) == "00:00:15.000" and _text(win, 1, gui.COL_LEN) == "00:00:30.000"
+    assert (
+        _text(win, 0, gui.COL_LEN) == "00:00:15.000"
+        and _text(win, 1, gui.COL_LEN) == "00:00:30.000"
+    )
     assert "2 segments" in win.summary.text() and "00:00:45.000" in win.summary.text()
 
 
@@ -147,7 +159,11 @@ def test_reorder_rows(win):
     win._move(-1)  # no-op at the top
     assert _text(win, 0, 0) == "00:00:00.000"
     win._move(1)
-    assert [_text(win, r, 0) for r in range(3)] == ["00:00:20.000", "00:00:00.000", "00:00:40.000"]
+    assert [_text(win, r, 0) for r in range(3)] == [
+        "00:00:20.000",
+        "00:00:00.000",
+        "00:00:40.000",
+    ]
     assert win.table.currentRow() == 1
     win._move(1)
     win._move(1)  # no-op at the bottom
@@ -179,7 +195,11 @@ def test_remove_without_selection_uses_current_row(win):
 def test_set_start_end_from_playhead(win):
     win._set_time_from_preview(gui.COL_START, 12.5)
     win._set_time_from_preview(gui.COL_END, 20)
-    assert _text(win, 0, 0) == "00:00:12.500" and _text(win, 0, 1) == "00:00:20.000" and win._valid
+    assert (
+        _text(win, 0, 0) == "00:00:12.500"
+        and _text(win, 0, 1) == "00:00:20.000"
+        and win._valid
+    )
     win.preview.setStartRequested.emit(5.0)
     assert _text(win, 0, 0) == "00:00:05.000"
 
@@ -191,8 +211,10 @@ def test_set_time_creates_row_when_table_empty(win):
 
 
 def test_bracket_shortcuts_use_playhead(win):
-    with mock.patch.object(win.preview, "can_set", return_value=True), \
-            mock.patch.object(win.preview, "position", return_value=7.0):
+    with (
+        mock.patch.object(win.preview, "can_set", return_value=True),
+        mock.patch.object(win.preview, "position", return_value=7.0),
+    ):
         win._shortcut_set(gui.COL_END)
     assert _text(win, 0, 1) == "00:00:07.000"
     with mock.patch.object(win.preview, "can_set", return_value=False):
@@ -216,8 +238,10 @@ def test_timeline_shows_segments(win):
 
 # ---------------------------------------------------------------- loading
 def test_load_failure_keeps_state(win):
-    with mock.patch.object(core, "probe", side_effect=core.TrimmerError("bad file")), \
-            mock.patch.object(gui.QMessageBox, "warning") as warn:
+    with (
+        mock.patch.object(core, "probe", side_effect=core.TrimmerError("bad file")),
+        mock.patch.object(gui.QMessageBox, "warning") as warn,
+    ):
         win._load("/fake/other.mp4")
     warn.assert_called_once()
     assert win.src == "/fake/video.mp4"
@@ -225,8 +249,11 @@ def test_load_failure_keeps_state(win):
 
 def test_drop_loads_first_local_file(win):
     from PyQt6.QtCore import QMimeData, QUrl
+
     mime = QMimeData()
-    mime.setUrls([QUrl("https://example.com/x.mp4"), QUrl.fromLocalFile("/fake/dropped.mp4")])
+    mime.setUrls(
+        [QUrl("https://example.com/x.mp4"), QUrl.fromLocalFile("/fake/dropped.mp4")]
+    )
     assert win._dropped_file(mime) == "/fake/dropped.mp4"
     assert win._dropped_file(QMimeData()) is None
     event = mock.Mock()
@@ -253,18 +280,29 @@ def test_export_without_valid_segments_warns(win):
 
 
 def test_export_missing_ffmpeg_warns(win):
-    with mock.patch.object(core, "ensure_ffmpeg", side_effect=core.TrimmerError("FFmpeg not found")), \
-            mock.patch.object(gui.QMessageBox, "warning") as warn:
+    with (
+        mock.patch.object(
+            core, "ensure_ffmpeg", side_effect=core.TrimmerError("FFmpeg not found")
+        ),
+        mock.patch.object(gui.QMessageBox, "warning") as warn,
+    ):
         win._export()
     assert "FFmpeg not found" in warn.call_args.args[2]
 
 
 def test_export_merged_flow_and_cancel(win):
-    with mock.patch.object(gui.QFileDialog, "getSaveFileName", return_value=("/fake/out", "")), \
-            mock.patch.object(gui.ExportWorker, "start") as start:
+    with (
+        mock.patch.object(
+            gui.QFileDialog, "getSaveFileName", return_value=("/fake/out", "")
+        ),
+        mock.patch.object(gui.ExportWorker, "start") as start,
+    ):
         win._export()
     start.assert_called_once()
-    assert win.worker._job[1] == "/fake/out.mp4" and win.worker._job[4] == core.OutputKind.MERGED
+    assert (
+        win.worker._job[1] == "/fake/out.mp4"
+        and win.worker._job[4] == core.OutputKind.MERGED
+    )
     assert win.busy and win.cancel_btn.isEnabled() and not win.table.isEnabled()
     assert not win.preview.set_start_btn.isEnabled() and win.progress.maximum() == 0
     win._on_progress(40)
@@ -279,8 +317,10 @@ def test_export_merged_flow_and_cancel(win):
 
 
 def test_export_dialog_cancelled_does_nothing(win):
-    with mock.patch.object(gui.QFileDialog, "getSaveFileName", return_value=("", "")), \
-            mock.patch.object(gui.ExportWorker, "start") as start:
+    with (
+        mock.patch.object(gui.QFileDialog, "getSaveFileName", return_value=("", "")),
+        mock.patch.object(gui.ExportWorker, "start") as start,
+    ):
         win._export()
     start.assert_not_called()
     assert not win.busy
@@ -291,8 +331,12 @@ def test_export_separate_flow_with_overwrite_prompt(win, tmp_path):
     win.output_box.setCurrentIndex(1)
     win.mode_box.setCurrentIndex(1)
     (tmp_path / "video_clip001.mp4").write_bytes(b"x")
-    with mock.patch.object(gui.QFileDialog, "getExistingDirectory", return_value=str(tmp_path)), \
-            mock.patch.object(gui.ExportWorker, "start") as start:
+    with (
+        mock.patch.object(
+            gui.QFileDialog, "getExistingDirectory", return_value=str(tmp_path)
+        ),
+        mock.patch.object(gui.ExportWorker, "start") as start,
+    ):
         with mock.patch.object(gui.QMessageBox, "question", return_value=NO):
             win._export()
         start.assert_not_called()
@@ -300,20 +344,29 @@ def test_export_separate_flow_with_overwrite_prompt(win, tmp_path):
             win._export()
     start.assert_called_once()
     job = win.worker._job
-    assert job[1] == str(tmp_path) and job[3] == core.Mode.FAST and job[4] == core.OutputKind.SEPARATE
+    assert (
+        job[1] == str(tmp_path)
+        and job[3] == core.Mode.FAST
+        and job[4] == core.OutputKind.SEPARATE
+    )
     assert len(job[2]) == 2
 
 
 def test_export_separate_folder_dialog_cancelled(win):
     win.output_box.setCurrentIndex(1)
-    with mock.patch.object(gui.QFileDialog, "getExistingDirectory", return_value=""), \
-            mock.patch.object(gui.ExportWorker, "start") as start:
+    with (
+        mock.patch.object(gui.QFileDialog, "getExistingDirectory", return_value=""),
+        mock.patch.object(gui.ExportWorker, "start") as start,
+    ):
         win._export()
     start.assert_not_called()
 
 
 def test_done_and_failed_dialogs(win):
-    with mock.patch.object(gui.QMessageBox, "exec"), mock.patch.object(gui.QDesktopServices, "openUrl"):
+    with (
+        mock.patch.object(gui.QMessageBox, "exec"),
+        mock.patch.object(gui.QDesktopServices, "openUrl"),
+    ):
         win._on_done(["/out/a.mp4"])
         win._on_done(["/out/a.mp4", "/out/b.mp4"])
     assert "Exported 2 clips" in win.log_view.toPlainText()
@@ -323,7 +376,9 @@ def test_done_and_failed_dialogs(win):
 
 
 def test_missing_ffmpeg_dialog_on_startup(app):
-    with mock.patch.object(core, "ensure_ffmpeg", side_effect=core.TrimmerError("FFmpeg not found")):
+    with mock.patch.object(
+        core, "ensure_ffmpeg", side_effect=core.TrimmerError("FFmpeg not found")
+    ):
         w = gui.MainWindow()
         with mock.patch.object(gui.QMessageBox, "critical") as crit:
             w._check_ffmpeg()
@@ -367,8 +422,14 @@ def test_worker_signals(app):
 
 # ---------------------------------------------------------------- timeline & handles
 def _ev(kind, x, buttons=Qt.MouseButton.LeftButton):
-    return QMouseEvent(kind, QPointF(x, 10), QPointF(x, 10), Qt.MouseButton.LeftButton, buttons,
-                       Qt.KeyboardModifier.NoModifier)
+    return QMouseEvent(
+        kind,
+        QPointF(x, 10),
+        QPointF(x, 10),
+        Qt.MouseButton.LeftButton,
+        buttons,
+        Qt.KeyboardModifier.NoModifier,
+    )
 
 
 PRESS, MOVE = QEvent.Type.MouseButtonPress, QEvent.Type.MouseMove
@@ -386,7 +447,12 @@ def _timeline(selection=(20.0, 60.0)):
 def test_timeline_has_edge_padding(app):
     tl = _timeline(None)
     assert tl.x_at(0) == preview.Timeline.PAD == 10 and tl.x_at(100) == 210
-    assert tl.time_at(10) == 0 and tl.time_at(210) == 100 and tl.time_at(-50) == 0 and tl.time_at(999) == 100
+    assert (
+        tl.time_at(10) == 0
+        and tl.time_at(210) == 100
+        and tl.time_at(-50) == 0
+        and tl.time_at(999) == 100
+    )
     tl.set_duration(0)
     assert tl.time_at(50) == 0 and tl.x_at(5) == 10
 
@@ -422,7 +488,11 @@ def test_timeline_drags_start_and_end_handles(app):
 
 def test_timeline_handle_hit_testing_and_hover_cursor(app):
     tl = _timeline()
-    assert tl.handle_at(50) == "start" and tl.handle_at(139) == "end" and tl.handle_at(80) is None
+    assert (
+        tl.handle_at(50) == "start"
+        and tl.handle_at(139) == "end"
+        and tl.handle_at(80) is None
+    )
     assert tl.handle_at(41) == "start" and tl.handle_at(40) is None
     tl.set_selection(50, 50)  # stacked handles: the side of the click decides
     assert tl.handle_at(108) == "start" and tl.handle_at(112) == "end"
@@ -485,7 +555,9 @@ def test_player_position_reports_are_ignored_after_a_manual_seek_and_when_paused
     p.seek(5)
     p._on_position(9000)  # inside the 300 ms guard
     assert p.position() == 5
-    with mock.patch.object(preview.time, "monotonic", return_value=time.monotonic() + 1):
+    with mock.patch.object(
+        preview.time, "monotonic", return_value=time.monotonic() + 1
+    ):
         p._on_position(9000)
         assert p.position() == 9.0
         p._on_position(99000)  # clamped to the duration
@@ -511,13 +583,18 @@ def test_steps_snap_to_the_frame_grid_and_clamp(app):
     p.seek(999)
     p.step_frames(1)
     assert p.position() == 30
-    assert "00:00:30.000 / 00:00:30.000" in p.time_label.text() and p.timeline._position == 30
+    assert (
+        "00:00:30.000 / 00:00:30.000" in p.time_label.text()
+        and p.timeline._position == 30
+    )
     p.shutdown()
 
 
 def test_scrubbing_renders_one_debounced_exact_frame(app, monkeypatch):
     calls = []
-    monkeypatch.setattr(core, "render_frame", lambda src, s, *a, **k: calls.append(s) or PNG)
+    monkeypatch.setattr(
+        core, "render_frame", lambda src, s, *a, **k: calls.append(s) or PNG
+    )
     p = _panel()
     assert _wait(lambda: p.frame_view.has_image)  # first frame after load
     calls.clear()
@@ -553,6 +630,17 @@ def test_frame_render_failure_from_worker(app, monkeypatch):
     p.shutdown()
 
 
+def test_frame_and_playback_errors_never_hide_each_other(app):
+    p = _panel()
+    p._on_frame_failed(p.renderer.latest_id, "no frame here")
+    p._on_error(None, "Could not open media")  # arrives later on some platforms (macOS)
+    text = p.placeholder.text()
+    assert "no frame here" in text and "Could not open media" in text
+    p.load("/fake/v.mp4", 30.0)
+    assert "no frame here" not in p.placeholder.text()
+    p.shutdown()
+
+
 def test_frame_view_scales_and_clears(app):
     view = preview.FrameView()
     view.show()
@@ -581,11 +669,19 @@ def test_scrubbing_works_without_multimedia_when_ffmpeg_exists(app):
 
 
 def test_everything_is_disabled_without_ffmpeg_and_multimedia(app):
-    with mock.patch.object(preview, "HAS_MEDIA", False), \
-            mock.patch.object(core, "ensure_ffmpeg", side_effect=core.TrimmerError("missing")):
+    with (
+        mock.patch.object(preview, "HAS_MEDIA", False),
+        mock.patch.object(
+            core, "ensure_ffmpeg", side_effect=core.TrimmerError("missing")
+        ),
+    ):
         p = preview.PreviewPanel()
         p.load("/fake/v.mp4", 30.0)
-    assert not p.scrub_enabled and not p.can_set() and "unavailable" in p.placeholder.text()
+    assert (
+        not p.scrub_enabled
+        and not p.can_set()
+        and "unavailable" in p.placeholder.text()
+    )
     p.seek(5)
     assert p.position() == 0
     p.clear()
@@ -597,7 +693,11 @@ def test_playback_states_and_errors(app):
     p = _panel()
     assert p.available and p.play_enabled
     p._on_state(preview.QMediaPlayer.PlaybackState.PlayingState)
-    assert "Pause" in p.play_btn.text() and p._playing and p.stack.currentWidget() is p.video
+    assert (
+        "Pause" in p.play_btn.text()
+        and p._playing
+        and p.stack.currentWidget() is p.video
+    )
     p._on_state(preview.QMediaPlayer.PlaybackState.PausedState)
     assert "Play" in p.play_btn.text() and not p._playing
     p._on_media_status(preview.QMediaPlayer.MediaStatus.EndOfMedia)
@@ -605,7 +705,9 @@ def test_playback_states_and_errors(app):
     p.toggle_play()  # restarts from the beginning when at the end
     p.player.pause()
     p._on_error(None, "unsupported codec")
-    assert not p.play_enabled and p.can_set()  # scrubbing keeps working through FFmpeg frames
+    assert (
+        not p.play_enabled and p.can_set()
+    )  # scrubbing keeps working through FFmpeg frames
     assert "Playback isn't available" in p.placeholder.text()
     p.set_editing(False)
     assert not p.can_set()
@@ -617,7 +719,9 @@ def test_playback_states_and_errors(app):
 def test_preview_backend_init_failure_keeps_frame_scrubbing(app):
     if not preview.HAS_MEDIA:
         pytest.skip("QtMultimedia not available")
-    with mock.patch.object(preview, "QMediaPlayer", side_effect=RuntimeError("no backend")):
+    with mock.patch.object(
+        preview, "QMediaPlayer", side_effect=RuntimeError("no backend")
+    ):
         p = _panel()
     assert not p.available and p.scrub_enabled
     p.shutdown()
@@ -630,7 +734,9 @@ def test_selecting_a_row_highlights_its_handles(win):
     assert win.preview.timeline._selection == (10.0, 20.0)
     win.table.setCurrentCell(1, 1)
     assert win.preview.timeline._selection == (30.0, 45.0)
-    win.table.item(1, 0).setText("abc")  # unparsable cell: only the valid handle remains
+    win.table.item(1, 0).setText(
+        "abc"
+    )  # unparsable cell: only the valid handle remains
     assert win.preview.timeline._selection == (None, 45.0)
     win.table.setRowCount(0)
     win._revalidate()
@@ -644,7 +750,9 @@ def test_dragging_a_handle_updates_the_cell_and_scrubs(win):
     tl.resize(1010, 48)
     tl.mousePressEvent(_ev(PRESS, tl.x_at(10)))
     tl.mouseMoveEvent(_ev(MOVE, tl.x_at(15)))
-    assert _text(win, 0, 0) == "00:00:15.000" and win.preview.position() == pytest.approx(15.0)
+    assert _text(
+        win, 0, 0
+    ) == "00:00:15.000" and win.preview.position() == pytest.approx(15.0)
     assert tl._selection == (15.0, 40.0)
     tl.mouseReleaseEvent(_ev(MOVE, tl.x_at(15)))
     win.preview.selectionDragged.emit("end", 12.3456)
@@ -667,7 +775,10 @@ def test_handle_drag_is_ignored_when_busy_or_without_a_row(win):
 def test_add_creates_the_segment_at_the_playhead(win, fresh):
     win.preview.seek(30)
     win._add_row()
-    assert (_text(win, 1, 0), _text(win, 1, 1)) == ("00:00:30.000", "00:01:00.000")  # keep: playhead -> end
+    assert (_text(win, 1, 0), _text(win, 1, 1)) == (
+        "00:00:30.000",
+        "00:01:00.000",
+    )  # keep: playhead -> end
     fresh.preview.seek(12.5)
     fresh._add_row()
     assert (_text(fresh, 0, 0), _text(fresh, 0, 1)) == ("00:00:12.500", "00:00:13.500")
@@ -677,7 +788,10 @@ def test_add_creates_the_segment_at_the_playhead(win, fresh):
 
 
 def test_frame_step_actions_and_shortcuts(win):
-    assert win.act_fback.shortcut().toString() == "Alt+Left" and win.act_ffwd.shortcut().toString() == "Alt+Right"
+    assert (
+        win.act_fback.shortcut().toString() == "Alt+Left"
+        and win.act_ffwd.shortcut().toString() == "Alt+Right"
+    )
     win.preview.seek(10)
     win.act_ffwd.trigger()
     assert win.preview.position() == pytest.approx(10 + 1 / 30)
@@ -692,7 +806,10 @@ def test_frame_step_actions_and_shortcuts(win):
 def test_editing_is_locked_during_export_including_handles(win):
     win.worker = mock.Mock()
     win._set_busy(True)
-    assert not win.preview.timeline._handles_enabled and not win.preview.set_start_btn.isEnabled()
+    assert (
+        not win.preview.timeline._handles_enabled
+        and not win.preview.set_start_btn.isEnabled()
+    )
     win.worker = None
     win._set_busy(False)
     assert win.preview.timeline._handles_enabled
@@ -701,9 +818,16 @@ def test_editing_is_locked_during_export_including_handles(win):
 # ---------------------------------------------------------------- cut-out (remove) mode
 def test_default_mode_is_cut_out_and_starts_empty(fresh):
     assert fresh.removing and fresh.action_box.currentData() == core.Action.REMOVE
-    assert fresh.table.rowCount() == 0 and not fresh.export_btn.isEnabled() and fresh.add_btn.isEnabled()
+    assert (
+        fresh.table.rowCount() == 0
+        and not fresh.export_btn.isEnabled()
+        and fresh.add_btn.isEnabled()
+    )
     assert "cut out" in fresh.summary.text()
-    assert [fresh.table.horizontalHeaderItem(i).text() for i in range(2)] == ["Cut from", "Cut to"]
+    assert [fresh.table.horizontalHeaderItem(i).text() for i in range(2)] == [
+        "Cut from",
+        "Cut to",
+    ]
 
 
 def test_add_is_disabled_until_a_video_is_loaded(app):
@@ -716,12 +840,21 @@ def test_add_is_disabled_until_a_video_is_loaded(app):
 def test_cutting_one_second_from_each_end_keeps_the_middle(fresh):
     _fill(fresh, ("0", "1"), ("59", "60"))
     assert fresh._valid and fresh._plan == [core.Segment(1, 59)]
-    assert "2 cuts" in fresh.summary.text() and "00:00:58.000 of 00:01:00.000" in fresh.summary.text()
+    assert (
+        "2 cuts" in fresh.summary.text()
+        and "00:00:58.000 of 00:01:00.000" in fresh.summary.text()
+    )
     assert fresh.preview.timeline._removing
-    with mock.patch.object(gui.QFileDialog, "getSaveFileName", return_value=("/fake/o.mp4", "")), \
-            mock.patch.object(gui.ExportWorker, "start"):
+    with (
+        mock.patch.object(
+            gui.QFileDialog, "getSaveFileName", return_value=("/fake/o.mp4", "")
+        ),
+        mock.patch.object(gui.ExportWorker, "start"),
+    ):
         fresh._export()
-    assert fresh.worker._job[2] == [core.Segment(1, 59)]  # the exported part is the REST, not the cuts
+    assert fresh.worker._job[2] == [
+        core.Segment(1, 59)
+    ]  # the exported part is the REST, not the cuts
 
 
 def test_cuts_may_overlap_and_are_merged(fresh):
@@ -740,7 +873,9 @@ def test_cutting_everything_is_rejected(fresh):
 
 def test_out_of_bounds_cut_is_flagged(fresh):
     _fill(fresh, ("50", "90"))
-    assert not fresh._valid and "after the video length" in _text(fresh, 0, gui.COL_STATUS)
+    assert not fresh._valid and "after the video length" in _text(
+        fresh, 0, gui.COL_STATUS
+    )
 
 
 def test_cut_mode_needs_a_known_duration(fresh):
@@ -752,7 +887,10 @@ def test_cut_mode_needs_a_known_duration(fresh):
 def test_cut_mode_separate_files_summary(fresh):
     _fill(fresh, ("10", "20"))
     fresh.output_box.setCurrentIndex(1)
-    assert fresh._plan == [core.Segment(0, 10), core.Segment(20, 60)] and "2 files" in fresh.summary.text()
+    assert (
+        fresh._plan == [core.Segment(0, 10), core.Segment(20, 60)]
+        and "2 files" in fresh.summary.text()
+    )
 
 
 def test_switching_mode_relabels_and_recomputes(fresh):
@@ -760,13 +898,17 @@ def test_switching_mode_relabels_and_recomputes(fresh):
     assert fresh._plan == [core.Segment(1, 60)]
     fresh.action_box.setCurrentIndex(1)
     assert fresh._plan == [core.Segment(0, 1)]
-    assert fresh.table.horizontalHeaderItem(0).text() == "Start" and not fresh.preview.timeline._removing
+    assert (
+        fresh.table.horizontalHeaderItem(0).text() == "Start"
+        and not fresh.preview.timeline._removing
+    )
     assert fresh._native("/a/b") in ("/a/b", "\\a\\b")
 
 
 def test_cell_editor_is_not_clipped(fresh):
     """Regression: the inline editor used to crop the time text (padding larger than the row)."""
     from video_trimmer.style import STYLE
+
     fresh.setStyleSheet(STYLE)
     _fill(fresh, ("0", "1"))
     fresh.show()

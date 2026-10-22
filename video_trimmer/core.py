@@ -1,4 +1,5 @@
 """FFmpeg-backed trimming engine. Has no GUI dependencies."""
+
 from __future__ import annotations
 
 import json
@@ -24,14 +25,32 @@ EPS = 1e-3
 ProgressCallback = Callable[[float], None]
 
 _HINTS = (
-    ("permission denied", "Permission denied while accessing a file. Check your access rights."),
+    (
+        "permission denied",
+        "Permission denied while accessing a file. Check your access rights.",
+    ),
     ("no space left", "The disk is full. Free some space and try again."),
     ("invalid data found", "The source file appears to be corrupted or unsupported."),
-    ("moov atom not found", "The source file is incomplete or corrupted (missing index)."),
-    ("unknown encoder", "This FFmpeg build lacks the H.264 encoder (libx264). Install a full FFmpeg build or use Fast Cut."),
-    ("encoder libx264 not found", "This FFmpeg build lacks the H.264 encoder (libx264). Install a full FFmpeg build or use Fast Cut."),
-    ("decoder", "FFmpeg cannot decode this video's codec. Try another file or a fuller FFmpeg build."),
-    ("no such file or directory", "A file or folder disappeared during export. Check the paths and try again."),
+    (
+        "moov atom not found",
+        "The source file is incomplete or corrupted (missing index).",
+    ),
+    (
+        "unknown encoder",
+        "This FFmpeg build lacks the H.264 encoder (libx264). Install a full FFmpeg build or use Fast Cut.",
+    ),
+    (
+        "encoder libx264 not found",
+        "This FFmpeg build lacks the H.264 encoder (libx264). Install a full FFmpeg build or use Fast Cut.",
+    ),
+    (
+        "decoder",
+        "FFmpeg cannot decode this video's codec. Try another file or a fuller FFmpeg build.",
+    ),
+    (
+        "no such file or directory",
+        "A file or folder disappeared during export. Check the paths and try again.",
+    ),
     (
         "could not find tag for codec",
         "The source codec cannot be stored in this output format. "
@@ -97,7 +116,9 @@ class MediaInfo:
             parts.append(self.video_codec)
         if self.fps:
             parts.append(f"{self.fps:.4g} fps" + (" (VFR)" if self.is_vfr else ""))
-        parts.append(format_time(self.duration) if self.duration else "unknown duration")
+        parts.append(
+            format_time(self.duration) if self.duration else "unknown duration"
+        )
         parts.append("audio" if self.has_audio else "no audio")
         return "  \u2022  ".join(parts)
 
@@ -173,10 +194,16 @@ def _find_tool(name: str) -> Optional[str]:
         if local and packages.is_dir():
             for hit in packages.glob(f"*FFmpeg*/**/bin/{exe}"):
                 return str(hit)
-        folders = [Path(local) / "Microsoft" / "WinGet" / "Links" if local else None,
-                   Path("C:/ffmpeg/bin"), Path("C:/Program Files/ffmpeg/bin")]
+        folders = [
+            Path(local) / "Microsoft" / "WinGet" / "Links" if local else None,
+            Path("C:/ffmpeg/bin"),
+            Path("C:/Program Files/ffmpeg/bin"),
+        ]
     else:
-        folders = [Path(p) for p in ("/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/snap/bin")]
+        folders = [
+            Path(p)
+            for p in ("/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/snap/bin")
+        ]
     for folder in filter(None, folders):
         if (folder / exe).is_file():
             return str(folder / exe)
@@ -234,11 +261,26 @@ def probe(path: str) -> MediaInfo:
         raise TrimmerError(f"File not found: {p}")
     if not os.access(p, os.R_OK):
         raise TrimmerError(f"No read permission for: {p}")
-    cmd = [ffprobe, "-v", "error", "-print_format", "json", "-show_format", "-show_streams", str(p)]
+    cmd = [
+        ffprobe,
+        "-v",
+        "error",
+        "-print_format",
+        "json",
+        "-show_format",
+        "-show_streams",
+        str(p),
+    ]
     try:
         res = subprocess.run(
-            cmd, stdin=subprocess.DEVNULL, capture_output=True, text=True, encoding="utf-8",
-            errors="replace", timeout=60, creationflags=_no_window(),
+            cmd,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=60,
+            creationflags=_no_window(),
         )
     except subprocess.TimeoutExpired as e:
         raise TrimmerError(f"Timed out while reading '{p.name}'.") from e
@@ -257,7 +299,10 @@ def probe(path: str) -> MediaInfo:
     if not videos:
         raise TrimmerError(f"'{p.name}' contains no video stream.")
     duration = None
-    for value in (data.get("format", {}).get("duration"), *(s.get("duration") for s in videos)):
+    for value in (
+        data.get("format", {}).get("duration"),
+        *(s.get("duration") for s in videos),
+    ):
         try:
             d = float(value)
         except (TypeError, ValueError):
@@ -280,7 +325,9 @@ def probe(path: str) -> MediaInfo:
 
 # ---------------------------------------------------------------- validation
 def find_issues(
-    segments: Sequence[Optional[Segment]], duration: Optional[float], allow_overlap: bool = False
+    segments: Sequence[Optional[Segment]],
+    duration: Optional[float],
+    allow_overlap: bool = False,
 ) -> dict[int, str]:
     """Map 0-based segment index to a problem description. ``None`` entries are skipped.
 
@@ -309,7 +356,9 @@ def find_issues(
     return issues
 
 
-def invert_segments(cuts: Sequence[Segment], duration: Optional[float]) -> list[Segment]:
+def invert_segments(
+    cuts: Sequence[Segment], duration: Optional[float]
+) -> list[Segment]:
     """Return the parts of ``[0, duration]`` that remain after cutting out ``cuts``.
 
     Overlapping or touching cuts are merged; cuts outside the video are clipped.
@@ -346,7 +395,9 @@ def validate_segments(
         raise TrimmerError("Add at least one segment.")
     issues = find_issues(segments, duration, allow_overlap)
     if issues:
-        raise TrimmerError("\n".join(f"Segment {i + 1}: {m}" for i, m in sorted(issues.items())))
+        raise TrimmerError(
+            "\n".join(f"Segment {i + 1}: {m}" for i, m in sorted(issues.items()))
+        )
 
 
 # ---------------------------------------------------------------- process runner
@@ -358,13 +409,25 @@ def _run(
     token: CancelToken,
 ) -> None:
     """Run one FFmpeg job, reporting progress (0..1) and honouring cancellation."""
-    args = [ffmpeg_bin, "-hide_banner", "-nostdin", "-nostats", "-progress", "pipe:1",
-            *stream.overwrite_output().get_args()]
+    args = [
+        ffmpeg_bin,
+        "-hide_banner",
+        "-nostdin",
+        "-nostats",
+        "-progress",
+        "pipe:1",
+        *stream.overwrite_output().get_args(),
+    ]
     token.check()
     try:
         proc = subprocess.Popen(
-            args, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            text=True, encoding="utf-8", errors="replace",
+            args,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
             creationflags=_no_window(),
         )
     except OSError as e:
@@ -401,13 +464,43 @@ def _run(
 
 
 # ---------------------------------------------------------------- preview frames
-def _grab_frame(src: str, pos: float, ffmpeg_bin: str, width: int, token: CancelToken, timeout: float) -> bytes:
-    args = [ffmpeg_bin, "-hide_banner", "-loglevel", "error", "-nostdin", "-ss", f"{pos:.3f}", "-i", src,
-            "-frames:v", "1", "-vf", f"scale={width}:-1", "-f", "image2pipe", "-vcodec", "png", "-"]
+def _grab_frame(
+    src: str,
+    pos: float,
+    ffmpeg_bin: str,
+    width: int,
+    token: CancelToken,
+    timeout: float,
+) -> bytes:
+    args = [
+        ffmpeg_bin,
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-nostdin",
+        "-ss",
+        f"{pos:.3f}",
+        "-i",
+        src,
+        "-frames:v",
+        "1",
+        "-vf",
+        f"scale={width}:-1",
+        "-f",
+        "image2pipe",
+        "-vcodec",
+        "png",
+        "-",
+    ]
     token.check()
     try:
-        proc = subprocess.Popen(args, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE, creationflags=_no_window())
+        proc = subprocess.Popen(
+            args,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            creationflags=_no_window(),
+        )
     except OSError as e:
         raise TrimmerError(f"Could not start FFmpeg: {e.strerror or e}") from e
     token.attach(proc)
@@ -473,9 +566,17 @@ def _copy_part(src: str, seg: Segment, info: MediaInfo, out: str):
     return ffmpeg.output(*outs, out, c="copy", avoid_negative_ts="make_zero")
 
 
-def _fast(src, segs, info, work: Path, final: Path, ffmpeg_bin, total, report, token) -> None:
+def _fast(
+    src, segs, info, work: Path, final: Path, ffmpeg_bin, total, report, token
+) -> None:
     if len(segs) == 1:
-        _run(_copy_part(src, segs[0], info, str(final)), ffmpeg_bin, segs[0].length, report, token)
+        _run(
+            _copy_part(src, segs[0], info, str(final)),
+            ffmpeg_bin,
+            segs[0].length,
+            report,
+            token,
+        )
         return
     names, done = [], 0.0
     for i, seg in enumerate(segs):
@@ -504,7 +605,10 @@ def separate_paths(src: str, folder: str, count: int) -> list[Path]:
     """Output file names for ``count`` separate clips."""
     width = max(3, len(str(count)))
     stem = Path(src).stem
-    return [Path(folder) / f"{stem}_clip{i:0{width}d}{default_suffix(src)}" for i in range(1, count + 1)]
+    return [
+        Path(folder) / f"{stem}_clip{i:0{width}d}{default_suffix(src)}"
+        for i in range(1, count + 1)
+    ]
 
 
 def export(
@@ -535,7 +639,9 @@ def export(
         if s == d:
             raise TrimmerError("Output file must differ from the source file.")
         if d.suffix.lower() not in SUPPORTED_OUT:
-            raise TrimmerError(f"Unsupported output format. Use one of: {', '.join(SUPPORTED_OUT)}")
+            raise TrimmerError(
+                f"Unsupported output format. Use one of: {', '.join(SUPPORTED_OUT)}"
+            )
     else:
         folder = d
         if not d.is_dir():
@@ -551,16 +657,34 @@ def export(
     try:
         work = Path(tempfile.mkdtemp(prefix=".vt_", dir=folder))
     except OSError as e:
-        raise TrimmerError(f"Cannot create a temporary file in '{folder}': {e.strerror or e}") from e
+        raise TrimmerError(
+            f"Cannot create a temporary file in '{folder}': {e.strerror or e}"
+        ) from e
     try:
         report(0.0)
         outputs: list[tuple[Path, Path]] = []
         if merged:
             final = work / f"out{d.suffix.lower()}"
             if mode == Mode.ACCURATE:
-                _run(_accurate(str(s), segments, info, str(final)), ffmpeg_bin, total, report, token)
+                _run(
+                    _accurate(str(s), segments, info, str(final)),
+                    ffmpeg_bin,
+                    total,
+                    report,
+                    token,
+                )
             else:
-                _fast(str(s), segments, info, work, final, ffmpeg_bin, total, report, token)
+                _fast(
+                    str(s),
+                    segments,
+                    info,
+                    work,
+                    final,
+                    ffmpeg_bin,
+                    total,
+                    report,
+                    token,
+                )
             outputs.append((final, d))
         else:
             done = 0.0
@@ -571,8 +695,11 @@ def export(
                 def cb(f: float, base: float = done, seg: Segment = seg) -> None:
                     report((base + f * seg.length) / total)
 
-                stream = (_accurate(str(s), [seg], info, str(part)) if mode == Mode.ACCURATE
-                          else _copy_part(str(s), seg, info, str(part)))
+                stream = (
+                    _accurate(str(s), [seg], info, str(part))
+                    if mode == Mode.ACCURATE
+                    else _copy_part(str(s), seg, info, str(part))
+                )
                 _run(stream, ffmpeg_bin, seg.length, cb, token)
                 outputs.append((part, target))
                 done += seg.length

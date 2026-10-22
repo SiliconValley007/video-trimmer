@@ -1,4 +1,5 @@
 """PyQt6 user interface."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -8,9 +9,25 @@ from typing import Optional
 from PyQt6.QtCore import QDir, Qt, QThread, QTimer, QUrl, pyqtSignal
 from PyQt6.QtGui import QAction, QBrush, QColor, QDesktopServices, QKeySequence
 from PyQt6.QtWidgets import (
-    QAbstractItemView, QComboBox, QFileDialog, QFrame, QGridLayout, QHBoxLayout, QHeaderView, QLabel,
-    QLineEdit, QMainWindow, QMessageBox, QPlainTextEdit, QProgressBar, QPushButton, QSplitter,
-    QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
+    QAbstractItemView,
+    QComboBox,
+    QFileDialog,
+    QFrame,
+    QGridLayout,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QLineEdit,
+    QMainWindow,
+    QMessageBox,
+    QPlainTextEdit,
+    QProgressBar,
+    QPushButton,
+    QSplitter,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
 )
 
 from . import __version__, core
@@ -20,8 +37,14 @@ from .timeparse import format_time, parse_time
 BAD = QBrush(QColor(122, 38, 46))
 RED, GREEN = QColor("#ff7b7b"), QColor("#6fdc8c")
 COL_START, COL_END, COL_LEN, COL_STATUS = range(4)
-VIDEO_FILTER = "Video files (*.mp4 *.mkv *.mov *.avi *.webm *.flv *.wmv *.m4v *.ts);;All files (*)"
-EDITABLE = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEditable
+VIDEO_FILTER = (
+    "Video files (*.mp4 *.mkv *.mov *.avi *.webm *.flv *.wmv *.m4v *.ts);;All files (*)"
+)
+EDITABLE = (
+    Qt.ItemFlag.ItemIsEnabled
+    | Qt.ItemFlag.ItemIsSelectable
+    | Qt.ItemFlag.ItemIsEditable
+)
 READONLY = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
 
 
@@ -33,8 +56,14 @@ class ExportWorker(QThread):
     failed = pyqtSignal(str)
     cancelled = pyqtSignal()
 
-    def __init__(self, src: str, dst: str, segments: list[core.Segment], mode: core.Mode,
-                 output: core.OutputKind = core.OutputKind.MERGED) -> None:
+    def __init__(
+        self,
+        src: str,
+        dst: str,
+        segments: list[core.Segment],
+        mode: core.Mode,
+        output: core.OutputKind = core.OutputKind.MERGED,
+    ) -> None:
         super().__init__()
         self._job = (src, dst, segments, mode, output)
         self.token = core.CancelToken()
@@ -52,7 +81,9 @@ class ExportWorker(QThread):
     def run(self) -> None:
         src, dst, segments, mode, output = self._job
         try:
-            paths = core.export(src, dst, segments, mode, self._emit, self.token, output)
+            paths = core.export(
+                src, dst, segments, mode, self._emit, self.token, output
+            )
         except core.ExportCancelled:
             self.cancelled.emit()
         except core.TrimmerError as e:
@@ -84,7 +115,10 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------ construction
     def _build_ui(self) -> None:
         self.drop = QFrame(objectName="drop")
-        self.path_edit = QLineEdit(readOnly=True, placeholderText="Drag & drop a video here, or click Browse\u2026")
+        self.path_edit = QLineEdit(
+            readOnly=True,
+            placeholderText="Drag & drop a video here, or click Browse\u2026",
+        )
         self.path_edit.setToolTip("Path of the loaded video")
         self.browse_btn = QPushButton("Browse\u2026", clicked=self._browse)
         self.browse_btn.setToolTip("Select a video file (Ctrl+O)")
@@ -98,8 +132,12 @@ class MainWindow(QMainWindow):
         drop_layout.addWidget(self.meta_label)
 
         self.preview = PreviewPanel()
-        self.preview.setStartRequested.connect(lambda s: self._set_time_from_preview(COL_START, s))
-        self.preview.setEndRequested.connect(lambda s: self._set_time_from_preview(COL_END, s))
+        self.preview.setStartRequested.connect(
+            lambda s: self._set_time_from_preview(COL_START, s)
+        )
+        self.preview.setEndRequested.connect(
+            lambda s: self._set_time_from_preview(COL_END, s)
+        )
         self.preview.selectionDragged.connect(self._on_handle_dragged)
 
         self.table = QTableWidget(0, 4)
@@ -107,14 +145,20 @@ class MainWindow(QMainWindow):
         self.table.setAlternatingRowColors(True)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(
-            QAbstractItemView.EditTrigger.DoubleClicked | QAbstractItemView.EditTrigger.EditKeyPressed
+            QAbstractItemView.EditTrigger.DoubleClicked
+            | QAbstractItemView.EditTrigger.EditKeyPressed
             | QAbstractItemView.EditTrigger.AnyKeyPressed
         )
-        self.table.setToolTip("Double-click a time to edit: HH:MM:SS, MM:SS or seconds, with optional .ms")
+        self.table.setToolTip(
+            "Double-click a time to edit: HH:MM:SS, MM:SS or seconds, with optional .ms"
+        )
         head = self.table.horizontalHeader()
-        for col, mode in ((COL_START, QHeaderView.ResizeMode.Stretch), (COL_END, QHeaderView.ResizeMode.Stretch),
-                          (COL_LEN, QHeaderView.ResizeMode.ResizeToContents),
-                          (COL_STATUS, QHeaderView.ResizeMode.Stretch)):
+        for col, mode in (
+            (COL_START, QHeaderView.ResizeMode.Stretch),
+            (COL_END, QHeaderView.ResizeMode.Stretch),
+            (COL_LEN, QHeaderView.ResizeMode.ResizeToContents),
+            (COL_STATUS, QHeaderView.ResizeMode.Stretch),
+        ):
             head.setSectionResizeMode(col, mode)
         self.table.verticalHeader().setDefaultSectionSize(38)
         self.table.itemChanged.connect(self._on_item_changed)
@@ -126,14 +170,32 @@ class MainWindow(QMainWindow):
             b.setToolTip(tip)
             return b
 
-        self.add_btn = button("Add", "Append a new segment (Ctrl+N)", lambda: self._add_row())
-        self.del_btn = button("Remove", "Delete the selected segments (Delete)", self._remove_rows)
+        self.add_btn = button(
+            "Add", "Append a new segment (Ctrl+N)", lambda: self._add_row()
+        )
+        self.del_btn = button(
+            "Remove", "Delete the selected segments (Delete)", self._remove_rows
+        )
         self.clear_btn = button("Clear All", "Remove every segment", self._clear_rows)
-        self.up_btn = button("\u25b2 Up", "Move the selected segment up (Ctrl+Up)", lambda: self._move(-1))
-        self.down_btn = button("\u25bc Down", "Move the selected segment down (Ctrl+Down)", lambda: self._move(1))
+        self.up_btn = button(
+            "\u25b2 Up",
+            "Move the selected segment up (Ctrl+Up)",
+            lambda: self._move(-1),
+        )
+        self.down_btn = button(
+            "\u25bc Down",
+            "Move the selected segment down (Ctrl+Down)",
+            lambda: self._move(1),
+        )
         self.summary = QLabel("", objectName="muted")
         tools = QHBoxLayout()
-        for b in (self.add_btn, self.del_btn, self.clear_btn, self.up_btn, self.down_btn):
+        for b in (
+            self.add_btn,
+            self.del_btn,
+            self.clear_btn,
+            self.up_btn,
+            self.down_btn,
+        ):
             tools.addWidget(b)
         tools.addSpacing(8)
         tools.addWidget(self.summary, 1)
@@ -155,32 +217,62 @@ class MainWindow(QMainWindow):
         self.action_box = QComboBox()
         self.action_box.addItem("Cut out these segments (remove)", core.Action.REMOVE)
         self.action_box.addItem("Keep only these segments", core.Action.KEEP)
-        self.action_box.setItemData(0, "Listed segments are deleted; the rest of the video is exported.",
-                                    Qt.ItemDataRole.ToolTipRole)
-        self.action_box.setItemData(1, "Only the listed segments are exported.", Qt.ItemDataRole.ToolTipRole)
-        self.action_box.setToolTip("Decide whether the listed segments are removed or kept")
-        self.action_box.currentIndexChanged.connect(lambda _i: self._on_action_changed())
+        self.action_box.setItemData(
+            0,
+            "Listed segments are deleted; the rest of the video is exported.",
+            Qt.ItemDataRole.ToolTipRole,
+        )
+        self.action_box.setItemData(
+            1, "Only the listed segments are exported.", Qt.ItemDataRole.ToolTipRole
+        )
+        self.action_box.setToolTip(
+            "Decide whether the listed segments are removed or kept"
+        )
+        self.action_box.currentIndexChanged.connect(
+            lambda _i: self._on_action_changed()
+        )
         self.output_box = QComboBox()
         self.output_box.addItem("Merge clips into one video", core.OutputKind.MERGED)
-        self.output_box.addItem("Export clips as separate files", core.OutputKind.SEPARATE)
-        self.output_box.setItemData(0, "Join all segments, in the listed order, into a single file.",
-                                    Qt.ItemDataRole.ToolTipRole)
-        self.output_box.setItemData(1, "Write one file per segment (segments may overlap).",
-                                    Qt.ItemDataRole.ToolTipRole)
+        self.output_box.addItem(
+            "Export clips as separate files", core.OutputKind.SEPARATE
+        )
+        self.output_box.setItemData(
+            0,
+            "Join all segments, in the listed order, into a single file.",
+            Qt.ItemDataRole.ToolTipRole,
+        )
+        self.output_box.setItemData(
+            1,
+            "Write one file per segment (segments may overlap).",
+            Qt.ItemDataRole.ToolTipRole,
+        )
         self.output_box.setToolTip("Choose how segments are exported")
         self.output_box.currentIndexChanged.connect(lambda _i: self._revalidate())
         self.mode_box = QComboBox()
         self.mode_box.addItem("Frame-accurate (re-encode)", core.Mode.ACCURATE)
         self.mode_box.addItem("Fast stream copy", core.Mode.FAST)
-        self.mode_box.setItemData(0, "Exact cut points. Re-encodes to H.264/AAC (slower).", Qt.ItemDataRole.ToolTipRole)
-        self.mode_box.setItemData(1, "No re-encoding: very fast and lossless, but cuts snap to keyframes.",
-                                  Qt.ItemDataRole.ToolTipRole)
+        self.mode_box.setItemData(
+            0,
+            "Exact cut points. Re-encodes to H.264/AAC (slower).",
+            Qt.ItemDataRole.ToolTipRole,
+        )
+        self.mode_box.setItemData(
+            1,
+            "No re-encoding: very fast and lossless, but cuts snap to keyframes.",
+            Qt.ItemDataRole.ToolTipRole,
+        )
         self.mode_box.setToolTip("Choose between exact cuts and fast keyframe cuts")
 
-        self.export_btn = QPushButton("Export\u2026", objectName="primary", clicked=self._export)
+        self.export_btn = QPushButton(
+            "Export\u2026", objectName="primary", clicked=self._export
+        )
         self.export_btn.setToolTip("Export the segments (Ctrl+E)")
-        self.cancel_btn = QPushButton("Cancel Export", objectName="danger", clicked=self._cancel_export)
-        self.cancel_btn.setToolTip("Stop the running export and discard partial output (Esc)")
+        self.cancel_btn = QPushButton(
+            "Cancel Export", objectName="danger", clicked=self._cancel_export
+        )
+        self.cancel_btn.setToolTip(
+            "Stop the running export and discard partial output (Esc)"
+        )
         self.cancel_btn.hide()
 
         buttons = QHBoxLayout()
@@ -236,10 +328,18 @@ class MainWindow(QMainWindow):
         self.act_play = act("&Play / pause", self.preview.toggle_play, "Space")
         self.act_back = act("&Back 1 s", lambda: self.preview.step(-1.0), "Ctrl+Left")
         self.act_fwd = act("&Forward 1 s", lambda: self.preview.step(1.0), "Ctrl+Right")
-        self.act_fback = act("Back 1 &frame", lambda: self.preview.step_frames(-1), "Alt+Left")
-        self.act_ffwd = act("Forward 1 f&rame", lambda: self.preview.step_frames(1), "Alt+Right")
-        self.act_set_start = act("Set &start at playhead", lambda: self._shortcut_set(COL_START), "[")
-        self.act_set_end = act("Set &end at playhead", lambda: self._shortcut_set(COL_END), "]")
+        self.act_fback = act(
+            "Back 1 &frame", lambda: self.preview.step_frames(-1), "Alt+Left"
+        )
+        self.act_ffwd = act(
+            "Forward 1 f&rame", lambda: self.preview.step_frames(1), "Alt+Right"
+        )
+        self.act_set_start = act(
+            "Set &start at playhead", lambda: self._shortcut_set(COL_START), "["
+        )
+        self.act_set_end = act(
+            "Set &end at playhead", lambda: self._shortcut_set(COL_END), "]"
+        )
         quit_act = act("&Quit", self.close, "Ctrl+Q")
         about = act("&About", self._about)
         menu = self.menuBar()
@@ -248,18 +348,34 @@ class MainWindow(QMainWindow):
         file_menu.addSeparator()
         file_menu.addAction(quit_act)
         seg_menu = menu.addMenu("&Segments")
-        seg_menu.addActions([self.act_add, self.act_remove, self.act_clear, self.act_up, self.act_down])
+        seg_menu.addActions(
+            [self.act_add, self.act_remove, self.act_clear, self.act_up, self.act_down]
+        )
         play_menu = menu.addMenu("&Playback")
-        play_menu.addActions([self.act_play, self.act_back, self.act_fwd, self.act_fback, self.act_ffwd, self.act_set_start, self.act_set_end])
+        play_menu.addActions(
+            [
+                self.act_play,
+                self.act_back,
+                self.act_fwd,
+                self.act_fback,
+                self.act_ffwd,
+                self.act_set_start,
+                self.act_set_end,
+            ]
+        )
         menu.addMenu("&Help").addAction(about)
 
     # ------------------------------------------------------------ helpers
     def _log(self, message: str) -> None:
         self.log_view.appendPlainText(f"[{datetime.now():%H:%M:%S}] {message}")
 
-    def _error(self, message: str, title: str = "Error", critical: bool = False) -> None:
+    def _error(
+        self, message: str, title: str = "Error", critical: bool = False
+    ) -> None:
         self._log(f"ERROR: {message.splitlines()[0]}")
-        (QMessageBox.critical if critical else QMessageBox.warning)(self, title, message)
+        (QMessageBox.critical if critical else QMessageBox.warning)(
+            self, title, message
+        )
 
     @property
     def busy(self) -> bool:
@@ -287,10 +403,27 @@ class MainWindow(QMainWindow):
         self._revalidate()
 
     def _set_busy(self, busy: bool) -> None:
-        for w in (self.browse_btn, self.add_btn, self.del_btn, self.clear_btn, self.up_btn, self.down_btn,
-                  self.mode_box, self.output_box, self.action_box, self.table):
+        for w in (
+            self.browse_btn,
+            self.add_btn,
+            self.del_btn,
+            self.clear_btn,
+            self.up_btn,
+            self.down_btn,
+            self.mode_box,
+            self.output_box,
+            self.action_box,
+            self.table,
+        ):
             w.setEnabled(not busy)
-        for a in (self.act_open, self.act_add, self.act_remove, self.act_clear, self.act_up, self.act_down):
+        for a in (
+            self.act_open,
+            self.act_add,
+            self.act_remove,
+            self.act_clear,
+            self.act_up,
+            self.act_down,
+        ):
             a.setEnabled(not busy)
         self.preview.set_editing(not busy)
         self.act_cancel.setEnabled(busy)
@@ -299,7 +432,9 @@ class MainWindow(QMainWindow):
         self.cancel_btn.setText("Cancel Export")
         self.progress.setVisible(busy)
         if busy:
-            self.progress.setRange(0, 0)  # indeterminate until the first progress report
+            self.progress.setRange(
+                0, 0
+            )  # indeterminate until the first progress report
         self._refresh_export_enabled()
 
     def _refresh_export_enabled(self) -> None:
@@ -317,8 +452,11 @@ class MainWindow(QMainWindow):
             self._error(str(e), "FFmpeg missing", critical=True)
 
     def _about(self) -> None:
-        QMessageBox.about(self, "About Video Trimmer",
-                          f"<b>Video Trimmer</b> {__version__}<br>Cut and join video segments with FFmpeg.")
+        QMessageBox.about(
+            self,
+            "About Video Trimmer",
+            f"<b>Video Trimmer</b> {__version__}<br>Cut and join video segments with FFmpeg.",
+        )
 
     # ------------------------------------------------------------ drag & drop
     @staticmethod
@@ -386,14 +524,18 @@ class MainWindow(QMainWindow):
         if duration and start >= duration:
             start = max(duration - 1.0, 0.0)
         if self.removing:  # default cut: one second
-            end_text = format_time(min(start + 1.0, duration) if duration else start + 1.0)
+            end_text = format_time(
+                min(start + 1.0, duration) if duration else start + 1.0
+            )
         else:  # default keep: from the playhead to the end
             end_text = format_time(duration) if duration and duration > start else ""
         self._updating = True
         try:
             row = self.table.rowCount()
             self.table.insertRow(row)
-            self.table.setItem(row, COL_START, self._make_item(format_time(start), EDITABLE))
+            self.table.setItem(
+                row, COL_START, self._make_item(format_time(start), EDITABLE)
+            )
             self.table.setItem(row, COL_END, self._make_item(end_text, EDITABLE))
             self.table.setItem(row, COL_LEN, self._make_item("", READONLY))
             self.table.setItem(row, COL_STATUS, self._make_item("", READONLY))
@@ -416,9 +558,13 @@ class MainWindow(QMainWindow):
 
     def _clear_rows(self) -> None:
         count = self.table.rowCount()
-        if count > 1 and QMessageBox.question(
-            self, "Clear all segments", f"Remove all {count} segments?"
-        ) != QMessageBox.StandardButton.Yes:
+        if (
+            count > 1
+            and QMessageBox.question(
+                self, "Clear all segments", f"Remove all {count} segments?"
+            )
+            != QMessageBox.StandardButton.Yes
+        ):
             return
         self.table.setRowCount(0)
         self._revalidate()
@@ -466,7 +612,9 @@ class MainWindow(QMainWindow):
     def _row_times(self, row: int) -> tuple[Optional[float], Optional[float]]:
         out: list[Optional[float]] = []
         for col in (COL_START, COL_END):
-            item = self.table.item(row, col) if 0 <= row < self.table.rowCount() else None
+            item = (
+                self.table.item(row, col) if 0 <= row < self.table.rowCount() else None
+            )
             try:
                 out.append(parse_time(item.text()) if item else None)
             except ValueError:
@@ -476,7 +624,9 @@ class MainWindow(QMainWindow):
     def _sync_selection(self) -> None:
         """Show the selected row's Start/End handles on the timeline."""
         row = self.table.currentRow()
-        self.preview.set_selection(*(self._row_times(row) if row >= 0 else (None, None)))
+        self.preview.set_selection(
+            *(self._row_times(row) if row >= 0 else (None, None))
+        )
 
     def _on_handle_dragged(self, which: str, seconds: float) -> None:
         row = self.table.currentRow()
@@ -528,7 +678,9 @@ class MainWindow(QMainWindow):
         try:
             for r in range(rows):
                 bad_cols = {c for (rr, c) in cell_errors if rr == r}
-                msg = next((m for (rr, _c), m in cell_errors.items() if rr == r), issues.get(r))
+                msg = next(
+                    (m for (rr, _c), m in cell_errors.items() if rr == r), issues.get(r)
+                )
                 if r in issues and not bad_cols:
                     bad_cols = {COL_START, COL_END}
                 for c in (COL_START, COL_END):
@@ -538,7 +690,9 @@ class MainWindow(QMainWindow):
                     item.setBackground(BAD if c in bad_cols else QBrush())
                     item.setToolTip(msg if c in bad_cols and msg else "")
                 seg = parsed[r]
-                self.table.item(r, COL_LEN).setText(format_time(seg.length) if seg and seg.length > 0 else "\u2014")
+                self.table.item(r, COL_LEN).setText(
+                    format_time(seg.length) if seg and seg.length > 0 else "\u2014"
+                )
                 status = self.table.item(r, COL_STATUS)
                 status.setText(f"\u2715 {msg}" if msg else "\u2713 OK")
                 status.setForeground(RED if msg else GREEN)
@@ -548,7 +702,12 @@ class MainWindow(QMainWindow):
 
         self._segments = parsed
         self.preview.set_segments(
-            [(s.start, s.end, i not in issues) for i, s in enumerate(parsed) if s and s.length > 0], self.removing
+            [
+                (s.start, s.end, i not in issues)
+                for i, s in enumerate(parsed)
+                if s and s.length > 0
+            ],
+            self.removing,
         )
         valid_rows = rows > 0 and not cell_errors and not issues
         plan: list[core.Segment] = []
@@ -562,24 +721,42 @@ class MainWindow(QMainWindow):
                     problem = str(e)
                 else:
                     if not plan:
-                        problem = "The cuts cover the whole video, so nothing would be left."
+                        problem = (
+                            "The cuts cover the whole video, so nothing would be left."
+                        )
             else:
                 plan = segs
         self._plan = plan
         self._valid = valid_rows and not problem
         kept, plural = sum(s.length for s in plan), "s" if rows != 1 else ""
         if rows == 0:
-            text, name = ("Add the parts you want to cut out." if self.removing else "Add at least one segment."), "muted"
+            text, name = (
+                (
+                    "Add the parts you want to cut out."
+                    if self.removing
+                    else "Add at least one segment."
+                ),
+                "muted",
+            )
         elif problem:
             text, name = problem, "error"
         elif not valid_rows:
             text, name = "Fix the highlighted segments to enable export.", "error"
         elif self.removing:
-            files = f"  \u2022  {len(plan)} file{'s' if len(plan) != 1 else ''}" if self.separate else ""
-            text, name = (f"{rows} cut{plural}  \u2022  keeps {format_time(kept)} of {format_time(duration)}{files}",
-                          "ok")
+            files = (
+                f"  \u2022  {len(plan)} file{'s' if len(plan) != 1 else ''}"
+                if self.separate
+                else ""
+            )
+            text, name = (
+                f"{rows} cut{plural}  \u2022  keeps {format_time(kept)} of {format_time(duration)}{files}",
+                "ok",
+            )
         else:
-            text, name = f"{rows} {'clip' if self.separate else 'segment'}{plural}  \u2022  total {format_time(kept)}", "ok"
+            text, name = (
+                f"{rows} {'clip' if self.separate else 'segment'}{plural}  \u2022  total {format_time(kept)}",
+                "ok",
+            )
         self.summary.setText(text)
         self.summary.setObjectName(name)
         self.summary.style().unpolish(self.summary)
@@ -593,18 +770,31 @@ class MainWindow(QMainWindow):
         if output == core.OutputKind.MERGED:
             suffix = core.default_suffix(self.src)
             dst, _ = QFileDialog.getSaveFileName(
-                self, "Export as", str(src.with_name(f"{src.stem}_trimmed{suffix}")), "Video (*.mp4 *.mkv *.mov)"
+                self,
+                "Export as",
+                str(src.with_name(f"{src.stem}_trimmed{suffix}")),
+                "Video (*.mp4 *.mkv *.mov)",
             )
             if dst and not Path(dst).suffix:
                 dst += suffix
             return dst or None
-        folder = QFileDialog.getExistingDirectory(self, "Choose output folder", str(src.parent))
+        folder = QFileDialog.getExistingDirectory(
+            self, "Choose output folder", str(src.parent)
+        )
         if not folder:
             return None
-        clashes = [p.name for p in core.separate_paths(self.src, folder, count) if p.exists()]
-        if clashes and QMessageBox.question(
-            self, "Overwrite files?", f"{len(clashes)} file(s) already exist (e.g. {clashes[0]}). Overwrite them?"
-        ) != QMessageBox.StandardButton.Yes:
+        clashes = [
+            p.name for p in core.separate_paths(self.src, folder, count) if p.exists()
+        ]
+        if (
+            clashes
+            and QMessageBox.question(
+                self,
+                "Overwrite files?",
+                f"{len(clashes)} file(s) already exist (e.g. {clashes[0]}). Overwrite them?",
+            )
+            != QMessageBox.StandardButton.Yes
+        ):
             return None
         return folder
 
@@ -626,8 +816,10 @@ class MainWindow(QMainWindow):
         if not dst:
             return
         mode = self.mode_box.currentData()
-        self._log(f"Exporting {len(segments)} part(s) to {self._native(dst)} "
-                  f"({self.output_box.currentText()}; {self.mode_box.currentText()})")
+        self._log(
+            f"Exporting {len(segments)} part(s) to {self._native(dst)} "
+            f"({self.output_box.currentText()}; {self.mode_box.currentText()})"
+        )
         self.worker = ExportWorker(self.src, dst, segments, mode, output)
         self.worker.progress.connect(self._on_progress)
         self.worker.succeeded.connect(self._on_done)
@@ -651,10 +843,15 @@ class MainWindow(QMainWindow):
 
     def _on_done(self, paths: list) -> None:
         folder = str(Path(paths[0]).parent) if paths else ""
-        text = (f"Exported to:\n{self._native(paths[0])}" if len(paths) == 1
-                else f"Exported {len(paths)} clips to:\n{self._native(folder)}")
+        text = (
+            f"Exported to:\n{self._native(paths[0])}"
+            if len(paths) == 1
+            else f"Exported {len(paths)} clips to:\n{self._native(folder)}"
+        )
         self._log(text.replace("\n", " "))
-        box = QMessageBox(QMessageBox.Icon.Information, "Export complete", text, parent=self)
+        box = QMessageBox(
+            QMessageBox.Icon.Information, "Export complete", text, parent=self
+        )
         reveal = box.addButton("Show in folder", QMessageBox.ButtonRole.ActionRole)
         box.addButton(QMessageBox.StandardButton.Ok)
         box.exec()
@@ -675,7 +872,9 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event) -> None:  # noqa: N802
         if self.worker and self.worker.isRunning():
-            answer = QMessageBox.question(self, "Export in progress", "Cancel the export and quit?")
+            answer = QMessageBox.question(
+                self, "Export in progress", "Cancel the export and quit?"
+            )
             if answer != QMessageBox.StandardButton.Yes:
                 event.ignore()
                 return

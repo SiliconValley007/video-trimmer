@@ -1,4 +1,5 @@
 """Silence native (C/DLL) writes to stderr while keeping Python's own stderr usable."""
+
 import os
 import sys
 
@@ -15,7 +16,14 @@ def silence_native_stderr() -> bool:
     except OSError:
         return False
     try:
-        sys.stderr = os.fdopen(original, "w", buffering=1, encoding="utf-8", errors="replace", closefd=False)
+        sys.stderr = os.fdopen(
+            original,
+            "w",
+            buffering=1,
+            encoding="utf-8",
+            errors="replace",
+            closefd=False,
+        )
         devnull = os.open(os.devnull, os.O_WRONLY)
         try:
             os.dup2(devnull, 2)

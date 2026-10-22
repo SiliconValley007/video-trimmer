@@ -1,4 +1,5 @@
 """Dark-mode Qt stylesheet."""
+
 from pathlib import Path
 
 _ARROW = (Path(__file__).parent / "assets" / "arrow_down.png").as_posix()

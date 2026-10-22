@@ -1,4 +1,5 @@
 """Parsing and formatting of user-entered time values."""
+
 import re
 
 _NUM = re.compile(r"(?:\d+(?:\.\d*)?|\.\d+)")
@@ -14,7 +15,9 @@ def parse_time(text: str) -> float:
         raise ValueError("Time is empty.")
     parts = [p.strip() for p in raw.split(":")]
     if len(parts) > 3 or not all(_NUM.fullmatch(p) for p in parts):
-        raise ValueError(f"'{raw}' is not a valid time. Use HH:MM:SS, MM:SS or seconds.")
+        raise ValueError(
+            f"'{raw}' is not a valid time. Use HH:MM:SS, MM:SS or seconds."
+        )
     nums = [float(p) for p in parts]
     if len(nums) > 1:
         if any(n != int(n) for n in nums[:-1]):

@@ -1,13 +1,29 @@
 """Video preview: exact ffmpeg-rendered frames, optional QtMultimedia playback, draggable range timeline."""
+
 from __future__ import annotations
 
 import time
 from typing import Iterable, Optional
 
-from PyQt6.QtCore import QObject, QRectF, QRunnable, Qt, QThreadPool, QTimer, QUrl, pyqtSignal
+from PyQt6.QtCore import (
+    QObject,
+    QRectF,
+    QRunnable,
+    Qt,
+    QThreadPool,
+    QTimer,
+    QUrl,
+    pyqtSignal,
+)
 from PyQt6.QtGui import QColor, QImage, QPainter, QPen, QPixmap
 from PyQt6.QtWidgets import (
-    QHBoxLayout, QLabel, QPushButton, QSizePolicy, QStackedLayout, QVBoxLayout, QWidget,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QSizePolicy,
+    QStackedLayout,
+    QVBoxLayout,
+    QWidget,
 )
 
 from . import core
@@ -24,7 +40,9 @@ except ImportError:  # pragma: no cover - depends on the platform
 OK_COLOR, BAD_COLOR = QColor(92, 124, 250, 150), QColor(224, 49, 49, 170)
 CUT_COLOR = QColor(255, 146, 43, 190)
 HANDLE_COLOR, HANDLE_OFF = QColor("#ffd43b"), QColor("#6b6d80")
-SEEK_GUARD = 0.3  # seconds during which player position reports are ignored after a manual seek
+SEEK_GUARD = (
+    0.3  # seconds during which player position reports are ignored after a manual seek
+)
 DEBOUNCE_MS = 120  # delay before a scrub position is rendered by FFmpeg
 STEP_SECONDS = 1.0
 
@@ -42,7 +60,9 @@ class Timeline(QWidget):
         self.setFixedHeight(48)
         self.setMouseTracking(True)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.setToolTip("Click or drag to scrub. Drag the yellow [ ] handles to change the selected segment.")
+        self.setToolTip(
+            "Click or drag to scrub. Drag the yellow [ ] handles to change the selected segment."
+        )
         self._duration = 0.0
         self._position = 0.0
         self._segments: list[tuple[float, float, bool]] = []
@@ -60,7 +80,9 @@ class Timeline(QWidget):
         self._position = seconds
         self.update()
 
-    def set_segments(self, segments: Iterable[tuple[float, float, bool]], removing: bool = False) -> None:
+    def set_segments(
+        self, segments: Iterable[tuple[float, float, bool]], removing: bool = False
+    ) -> None:
         self._segments = list(segments)
         self._removing = removing
         self.update()
@@ -85,7 +107,10 @@ class Timeline(QWidget):
     def x_at(self, seconds: float) -> float:
         if self._duration <= 0:
             return float(self.PAD)
-        return self.PAD + min(max(seconds / self._duration, 0.0), 1.0) * self._track_width()
+        return (
+            self.PAD
+            + min(max(seconds / self._duration, 0.0), 1.0) * self._track_width()
+        )
 
     def handle_at(self, x: float) -> Optional[str]:
         """Return the handle under ``x`` ("start"/"end") or ``None``."""
@@ -99,7 +124,9 @@ class Timeline(QWidget):
                     hits.append((abs(x - hx), name, hx))
         if not hits:
             return None
-        if len(hits) == 2 and abs(hits[0][0] - hits[1][0]) < 0.5:  # stacked handles: pick by side
+        if (
+            len(hits) == 2 and abs(hits[0][0] - hits[1][0]) < 0.5
+        ):  # stacked handles: pick by side
             return "start" if x < hits[0][2] else "end"
         return min(hits)[1]
 
@@ -120,7 +147,11 @@ class Timeline(QWidget):
             else:
                 self.handleDragged.emit(self._drag, self.time_at(x))
         else:
-            self.setCursor(Qt.CursorShape.SizeHorCursor if self.handle_at(x) else Qt.CursorShape.PointingHandCursor)
+            self.setCursor(
+                Qt.CursorShape.SizeHorCursor
+                if self.handle_at(x)
+                else Qt.CursorShape.PointingHandCursor
+            )
 
     def mouseReleaseEvent(self, _event) -> None:  # noqa: N802
         self._drag = None
@@ -142,7 +173,9 @@ class Timeline(QWidget):
         for start, end, ok in self._segments:
             x0, x1 = self.x_at(start), self.x_at(end)
             if x1 - x0 >= 1:
-                p.setBrush(BAD_COLOR if not ok else CUT_COLOR if self._removing else OK_COLOR)
+                p.setBrush(
+                    BAD_COLOR if not ok else CUT_COLOR if self._removing else OK_COLOR
+                )
                 p.drawRoundedRect(QRectF(x0, 16, x1 - x0, 16), 4, 4)
         if self._selection and self._duration > 0:
             start, end = self._selection
@@ -151,7 +184,9 @@ class Timeline(QWidget):
                 tint = QColor(color)
                 tint.setAlpha(45)
                 p.setBrush(tint)
-                p.drawRect(QRectF(self.x_at(start), 12, self.x_at(end) - self.x_at(start), 24))
+                p.drawRect(
+                    QRectF(self.x_at(start), 12, self.x_at(end) - self.x_at(start), 24)
+                )
             if start is not None:
                 self._bracket(p, self.x_at(start), 1, color)
             if end is not None:
@@ -190,20 +225,34 @@ class FrameView(QLabel):
             self._rescale()
 
     def _rescale(self) -> None:
-        self.setPixmap(QPixmap.fromImage(self._image).scaled(
-            self.size(), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+        self.setPixmap(
+            QPixmap.fromImage(self._image).scaled(
+                self.size(),
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+        )
 
 
 class _FrameJob(QRunnable):
-    def __init__(self, owner: "FrameRenderer", job_id: int, src: str, seconds: float,
-                 ffmpeg_bin: Optional[str], token: core.CancelToken) -> None:
+    def __init__(
+        self,
+        owner: "FrameRenderer",
+        job_id: int,
+        src: str,
+        seconds: float,
+        ffmpeg_bin: Optional[str],
+        token: core.CancelToken,
+    ) -> None:
         super().__init__()
         self.owner, self.job_id, self.src, self.seconds = owner, job_id, src, seconds
         self.ffmpeg_bin, self.token = ffmpeg_bin, token
 
     def run(self) -> None:
         try:
-            data = core.render_frame(self.src, self.seconds, self.ffmpeg_bin, token=self.token)
+            data = core.render_frame(
+                self.src, self.seconds, self.ffmpeg_bin, token=self.token
+            )
             image = QImage.fromData(data, "PNG")
             if image.isNull():
                 raise core.TrimmerError("FFmpeg returned an unreadable frame.")
@@ -237,7 +286,13 @@ class FrameRenderer(QObject):
         self._token: Optional[core.CancelToken] = None
         self.latest_id = 0
 
-    def request(self, src: str, seconds: float, ffmpeg_bin: Optional[str] = None, immediate: bool = False) -> int:
+    def request(
+        self,
+        src: str,
+        seconds: float,
+        ffmpeg_bin: Optional[str] = None,
+        immediate: bool = False,
+    ) -> int:
         self.latest_id += 1
         self._request = (src, seconds, ffmpeg_bin)
         if immediate:
@@ -254,7 +309,9 @@ class FrameRenderer(QObject):
         src, seconds, ffmpeg_bin = self._request
         self._request = None
         self._token = core.CancelToken()
-        self._pool.start(_FrameJob(self, self.latest_id, src, seconds, ffmpeg_bin, self._token))
+        self._pool.start(
+            _FrameJob(self, self.latest_id, src, seconds, ffmpeg_bin, self._token)
+        )
 
     def _cancel_running(self) -> None:
         if self._token:
@@ -292,9 +349,13 @@ class PreviewPanel(QWidget):
         self._playing = False
         self._editing = True
         self._guard_until = 0.0
+        self._frame_error = ""
+        self._play_error = ""
         self._reason = "Preview is unavailable (no FFmpeg and no multimedia backend). You can still type times."
 
-        self.placeholder = QLabel("Load a video to preview it.", objectName="placeholder")
+        self.placeholder = QLabel(
+            "Load a video to preview it.", objectName="placeholder"
+        )
         self.placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.placeholder.setWordWrap(True)
         self.placeholder.setMinimumHeight(160)
@@ -307,7 +368,9 @@ class PreviewPanel(QWidget):
             try:
                 self.video = QVideoWidget()
                 self.video.setMinimumHeight(160)
-                self.video.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+                self.video.setSizePolicy(
+                    QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+                )
                 self.player = QMediaPlayer(self)
                 try:
                     self._audio = QAudioOutput(self)
@@ -337,18 +400,43 @@ class PreviewPanel(QWidget):
             return b
 
         self.play_btn = button("\u25b6 Play", "Play / pause (Space)", self.toggle_play)
-        self.back_btn = button("\u25c0\u25c0 1s", "Back 1 second (Ctrl+Left)", lambda: self.step(-STEP_SECONDS))
-        self.fback_btn = button("\u25c0 Frame", "Back 1 frame (Alt+Left)", lambda: self.step_frames(-1))
-        self.ffwd_btn = button("Frame \u25b6", "Forward 1 frame (Alt+Right)", lambda: self.step_frames(1))
-        self.fwd_btn = button("1s \u25b6\u25b6", "Forward 1 second (Ctrl+Right)", lambda: self.step(STEP_SECONDS))
+        self.back_btn = button(
+            "\u25c0\u25c0 1s",
+            "Back 1 second (Ctrl+Left)",
+            lambda: self.step(-STEP_SECONDS),
+        )
+        self.fback_btn = button(
+            "\u25c0 Frame", "Back 1 frame (Alt+Left)", lambda: self.step_frames(-1)
+        )
+        self.ffwd_btn = button(
+            "Frame \u25b6", "Forward 1 frame (Alt+Right)", lambda: self.step_frames(1)
+        )
+        self.fwd_btn = button(
+            "1s \u25b6\u25b6",
+            "Forward 1 second (Ctrl+Right)",
+            lambda: self.step(STEP_SECONDS),
+        )
         self.time_label = QLabel("00:00:00.000 / 00:00:00.000", objectName="muted")
-        self.set_start_btn = button("Set Start  [", "Use the playhead as the start of the selected segment ([)",
-                                    lambda: self.setStartRequested.emit(self.position()))
-        self.set_end_btn = button("Set End  ]", "Use the playhead as the end of the selected segment (])",
-                                  lambda: self.setEndRequested.emit(self.position()))
+        self.set_start_btn = button(
+            "Set Start  [",
+            "Use the playhead as the start of the selected segment ([)",
+            lambda: self.setStartRequested.emit(self.position()),
+        )
+        self.set_end_btn = button(
+            "Set End  ]",
+            "Use the playhead as the end of the selected segment (])",
+            lambda: self.setEndRequested.emit(self.position()),
+        )
 
         controls = QHBoxLayout()
-        for w in (self.play_btn, self.back_btn, self.fback_btn, self.ffwd_btn, self.fwd_btn, self.time_label):
+        for w in (
+            self.play_btn,
+            self.back_btn,
+            self.fback_btn,
+            self.ffwd_btn,
+            self.fwd_btn,
+            self.time_label,
+        ):
             controls.addWidget(w)
         controls.addStretch()
         controls.addWidget(self.set_start_btn)
@@ -398,13 +486,17 @@ class PreviewPanel(QWidget):
 
     def _update_ui(self) -> None:
         self.timeline.set_position(self._pos)
-        self.time_label.setText(f"{format_time(self._pos)} / {format_time(self._duration)}")
+        self.time_label.setText(
+            f"{format_time(self._pos)} / {format_time(self._duration)}"
+        )
 
     def set_editing(self, enabled: bool) -> None:
         self._editing = enabled
         self._refresh()
 
-    def set_segments(self, segments: Iterable[tuple[float, float, bool]], removing: bool = False) -> None:
+    def set_segments(
+        self, segments: Iterable[tuple[float, float, bool]], removing: bool = False
+    ) -> None:
         self.timeline.set_segments(segments, removing)
 
     def set_selection(self, start: Optional[float], end: Optional[float]) -> None:
@@ -427,6 +519,7 @@ class PreviewPanel(QWidget):
     # ------------------------------------------------------------ loading
     def load(self, path: str, duration: float, fps: Optional[float] = None) -> None:
         self.renderer.cancel()
+        self._frame_error = self._play_error = ""
         self._src, self._duration = path, duration or 0.0
         self._fps = fps if fps and fps > 0 else 30.0
         self._pos, self._loaded, self._playing = 0.0, True, False
@@ -441,13 +534,18 @@ class PreviewPanel(QWidget):
         if self.player:
             self.player.setSource(QUrl.fromLocalFile(path))
             self.player.pause()
-        self.placeholder.setText("Loading preview\u2026" if self._frames_ok or self._playable else self._reason)
+        self.placeholder.setText(
+            "Loading preview\u2026"
+            if self._frames_ok or self._playable
+            else self._reason
+        )
         self._show_current()
         self._request_frame(immediate=True)
         self._refresh()
 
     def clear(self) -> None:
         self.renderer.cancel()
+        self._frame_error = self._play_error = ""
         self._loaded = self._frames_ok = self._playable = self._playing = False
         self._pos, self._duration, self._src = 0.0, 0.0, None
         self.frame_view.set_image(None)
@@ -533,12 +631,25 @@ class PreviewPanel(QWidget):
 
     def _on_error(self, _error, message: str) -> None:
         self._playable = False
-        self.placeholder.setText(
-            f"Playback isn't available for this file ({message or 'unsupported codec'}).\n"
-            "You can still scrub and enter times manually; export is unaffected."
-        )
+        self._play_error = message or "unsupported codec"
+        self._update_placeholder()
         self._show_current()
         self._refresh()
+
+    def _update_placeholder(self) -> None:
+        """Combine frame and playback errors so neither hides the other (they arrive in any order)."""
+        parts = []
+        if self._frame_error:
+            parts.append(
+                f"The preview frame could not be rendered.\n{self._frame_error}"
+            )
+        if self._play_error:
+            parts.append(
+                f"Playback isn't available for this file ({self._play_error}).\n"
+                "You can still scrub and enter times manually; export is unaffected."
+            )
+        if parts:
+            self.placeholder.setText("\n\n".join(parts))
 
     def _on_frame(self, job_id: int, image: QImage) -> None:
         if job_id != self.renderer.latest_id:
@@ -550,5 +661,6 @@ class PreviewPanel(QWidget):
     def _on_frame_failed(self, job_id: int, message: str) -> None:
         if job_id != self.renderer.latest_id or self.frame_view.has_image:
             return
-        self.placeholder.setText(f"The preview frame could not be rendered.\n{message}")
+        self._frame_error = message
+        self._update_placeholder()
         self._show_current()

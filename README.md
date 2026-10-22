@@ -58,8 +58,6 @@ pip install -r requirements.txt pyinstaller
 pyinstaller packaging/video-trimmer.spec --noconfirm   # -> dist/VideoTrimmer.exe
 ```
 
-Pushing a tag such as `v1.1.0` runs `.github/workflows/release.yml`, which tests, builds the exe and attaches `VideoTrimmer-windows-x64.exe` and `VideoTrimmer-windows-x64-with-ffmpeg.zip` to the GitHub release. The plain exe finds FFmpeg on PATH, via `FFMPEG_BINARY`/`FFPROBE_BINARY`, or when `ffmpeg.exe` and `ffprobe.exe` sit next to it. FFmpeg is licensed separately (see ffmpeg.org/legal.html).
-
 ## Tests
 
 ```bash

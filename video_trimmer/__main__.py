@@ -1,4 +1,5 @@
 """Application entry point: ``python -m video_trimmer``."""
+
 import os
 
 DEBUG = bool(os.environ.get("VIDEO_TRIMMER_DEBUG"))
